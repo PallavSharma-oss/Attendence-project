@@ -1,0 +1,287 @@
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                   NETWORK-BASED AUTO CHECK-IN FLOW                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+                              ┌─────────────────┐
+                              │  Employee Opens │
+                              │    Dashboard    │
+                              └────────┬────────┘
+                                       │
+                                       ▼
+                          ┌────────────────────────┐
+                          │ Already checked in     │
+                          │ today?                 │
+                          └───┬─────────────────┬──┘
+                              │                 │
+                         YES  │                 │ NO
+                              │                 │
+                    ┌─────────▼──────┐         ▼
+                    │  Don't show    │    ┌────────────────────┐
+                    │  prompt        │    │ Fetch Firestore    │
+                    │  END           │    │ settings/          │
+                    └────────────────┘    │ networkWhitelist   │
+                                          └─────────┬──────────┘
+                                                    │
+                                                    ▼
+                                          ┌─────────────────────┐
+                                          │ Feature enabled?    │
+                                          │ allowedRanges set?  │
+                                          └──┬──────────────┬───┘
+                                             │              │
+                                        NO   │              │ YES
+                                             │              │
+                                   ┌─────────▼──────┐      ▼
+                                   │  Don't show    │  ┌──────────────────┐
+                                   │  prompt        │  │ Fetch Client IP  │
+                                   │  END           │  │ from External    │
+                                   └────────────────┘  │ API (ipify)      │
+                                                       └─────────┬────────┘
+                                                                 │
+                                                                 ▼
+                                                       ┌──────────────────────┐
+                                                       │ Validate IP against  │
+                                                       │ allowedRanges        │
+                                                       │ (CIDR matching)      │
+                                                       └──┬──────────────┬────┘
+                                                          │              │
+                                                     NO   │              │ YES
+                                                          │              │
+                                                ┌─────────▼──────┐      ▼
+                                                │  Don't show    │  ┌─────────────────────┐
+                                                │  prompt        │  │ Check sessionStorage│
+                                                │  END           │  │ for dismissal today │
+                                                └────────────────┘  └──┬──────────────┬───┘
+                                                                       │              │
+                                                                  YES  │              │ NO
+                                                                       │              │
+                                                             ┌─────────▼──────┐      ▼
+                                                             │  Don't show    │  ┌────────────────────┐
+                                                             │  prompt        │  │ Show Prompt        │
+                                                             │  END           │  │ "Auto Check-In     │
+                                                             └────────────────┘  │  Available"        │
+                                                                                 │                    │
+                                                                                 │ IP: 203.0.113.45   │
+                                                                                 └──┬──────────────┬──┘
+                                                                                    │              │
+                                                                        ┌───────────▼────┐   ┌─────▼─────────┐
+                                                                        │ User clicks    │   │ User clicks   │
+                                                                        │ "Not Now"      │   │ "Confirm"     │
+                                                                        └───────┬────────┘   └─────┬─────────┘
+                                                                                │                  │
+                                                                                ▼                  ▼
+                                                                      ┌──────────────────┐  ┌────────────────────┐
+                                                                      │ Save dismissal   │  │ Call checkIn()     │
+                                                                      │ to sessionStorage│  │ with networkData:  │
+                                                                      │ Hide prompt      │  │ {                  │
+                                                                      │ END              │  │   ipAddress,       │
+                                                                      └──────────────────┘  │   networkVerified  │
+                                                                                            │ }                  │
+                                                                                            └─────────┬──────────┘
+                                                                                                      │
+                                                                                                      ▼
+                                                                                            ┌──────────────────────┐
+                                                                                            │ Save to Firestore:   │
+                                                                                            │ attendance/{id}      │
+                                                                                            │ {                    │
+                                                                                            │   checkIn: now,      │
+                                                                                            │   ipAddress,         │
+                                                                                            │   networkVerified,   │
+                                                                                            │   checkInMethod:     │
+                                                                                            │   'auto-network'     │
+                                                                                            │ }                    │
+                                                                                            └─────────┬────────────┘
+                                                                                                      │
+                                                                                                      ▼
+                                                                                            ┌──────────────────────┐
+                                                                                            │ Show Success Toast:  │
+                                                                                            │ "Checked in from     │
+                                                                                            │  office network      │
+                                                                                            │  (203.0.113.45)"     │
+                                                                                            │                      │
+                                                                                            │ Hide prompt          │
+                                                                                            │ END ✅               │
+                                                                                            └──────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           KEY COMPONENTS                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  📁 src/utils/networkDetection.js                                          │
+│  ├─ getClientIP()           → Fetches IP from api.ipify.org               │
+│  ├─ isIPInRange()           → Validates IP against CIDR whitelist          │
+│  └─ validateOfficeNetwork() → Main validation function                     │
+│                                                                             │
+│  📁 src/components/AutoCheckInPrompt.jsx                                   │
+│  └─ Slide-up prompt with IP display, confirm/dismiss buttons              │
+│                                                                             │
+│  📁 src/pages/Dashboard.jsx                                                │
+│  ├─ useEffect: checkOfficeNetwork()                                        │
+│  ├─ handleAutoCheckIn()                                                     │
+│  └─ handleDismissAutoCheckIn()                                              │
+│                                                                             │
+│  📁 src/hooks/useAttendance.js                                            │
+│  └─ checkIn(verification, networkData) → Saves network metadata            │
+│                                                                             │
+│  🔥 Firestore: settings/networkWhitelist                                   │
+│  └─ { enabled, allowedRanges, description, lastUpdated }                  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        IP VALIDATION LOGIC                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Input: clientIP = "192.168.1.45"                                          │
+│  Whitelist: ["192.168.1.0/24", "10.0.0.0/16", "203.0.113.45"]             │
+│                                                                             │
+│  Step 1: Check "192.168.1.0/24"                                            │
+│  ├─ Parse CIDR: network=192.168.1.0, prefix=24                            │
+│  ├─ Convert to binary & apply subnet mask                                  │
+│  ├─ Client: 11000000.10101000.00000001.00101101                           │
+│  ├─ Mask:   11111111.11111111.11111111.00000000 (/24)                     │
+│  ├─ Result: 11000000.10101000.00000001.00000000 (192.168.1.0)             │
+│  └─ Match! ✅ Return: { isOfficeNetwork: true, ipAddress: "192.168.1.45" }│
+│                                                                             │
+│  Step 2: (Not reached, already matched)                                    │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      USER INTERFACE STATES                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  STATE 1: Prompt Appears (on office network, not checked in)               │
+│  ┌───────────────────────────────────────────────────────────┐            │
+│  │  🛜  Office Network Detected                         ✕   │            │
+│  │     Auto check-in is available                            │            │
+│  ├───────────────────────────────────────────────────────────┤            │
+│  │                                                           │            │
+│  │  ✓ Verified office location                              │            │
+│  │    IP: 192.168.1.45                                       │            │
+│  │                                                           │            │
+│  │  ┌─────────────────────────────────────────────────────┐ │            │
+│  │  │        ✓ Confirm Auto Check-In                      │ │            │
+│  │  └─────────────────────────────────────────────────────┘ │            │
+│  │                                                           │            │
+│  │  ┌─────────────────────────────────────────────────────┐ │            │
+│  │  │               Not Now                                │ │            │
+│  │  └─────────────────────────────────────────────────────┘ │            │
+│  │                                                           │            │
+│  └───────────────────────────────────────────────────────────┘            │
+│                                                                             │
+│  STATE 2: Loading (after clicking Confirm)                                 │
+│  ┌───────────────────────────────────────────────────────────┐            │
+│  │  ┌─────────────────────────────────────────────────────┐ │            │
+│  │  │    🔄 Checking in...                                 │ │            │
+│  │  └─────────────────────────────────────────────────────┘ │            │
+│  └───────────────────────────────────────────────────────────┘            │
+│                                                                             │
+│  STATE 3: Success Toast                                                    │
+│  ┌───────────────────────────────────────────────────────────┐            │
+│  │  ✅ Auto check-in successful                              │            │
+│  │     Checked in from office network (192.168.1.45)         │            │
+│  └───────────────────────────────────────────────────────────┘            │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      FIRESTORE DATA STRUCTURE                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  📁 settings (collection)                                                  │
+│  └─ 📄 networkWhitelist (document)                                         │
+│      ├─ enabled: true                                                       │
+│      ├─ allowedRanges: [                                                    │
+│      │    "192.168.1.0/24",                                                 │
+│      │    "10.0.0.0/16",                                                    │
+│      │    "203.0.113.45"                                                    │
+│      │  ]                                                                   │
+│      ├─ description: "Office network whitelist"                             │
+│      └─ lastUpdated: "2024-12-15T10:30:00Z"                                │
+│                                                                             │
+│  📁 attendance (collection)                                                │
+│  └─ 📄 {attendanceId} (document)                                           │
+│      ├─ userId: "abc123"                                                    │
+│      ├─ date: "2024-12-15"                                                  │
+│      ├─ checkIn: Timestamp(2024-12-15 09:00:00)                            │
+│      ├─ checkOut: Timestamp(2024-12-15 18:00:00)                           │
+│      ├─ checkInMethod: "auto-network"           ← NEW                      │
+│      ├─ ipAddress: "192.168.1.45"                ← NEW                      │
+│      └─ networkVerified: true                    ← NEW                      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        SECURITY CONSIDERATIONS                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ✅ IP Whitelisting                                                         │
+│  └─ Only approved IPs can trigger auto check-in                           │
+│                                                                             │
+│  ✅ Firestore Security Rules                                               │
+│  └─ Only admins can modify whitelist, all authenticated users can read    │
+│                                                                             │
+│  ✅ Audit Trail                                                             │
+│  └─ Every auto check-in logs IP address and verification status           │
+│                                                                             │
+│  ✅ Session Management                                                      │
+│  └─ Dismissal stored in sessionStorage (per-browser, per-day)             │
+│                                                                             │
+│  ✅ No Duplicate Check-Ins                                                  │
+│  └─ Prompt only shows if not already checked in today                     │
+│                                                                             │
+│  ⚠️  Client-Side Validation                                                │
+│  └─ IP detection happens client-side (can be bypassed with dev tools)     │
+│      → Mitigated by audit trail showing all check-in IPs                  │
+│                                                                             │
+│  ⚠️  External API Dependency                                                │
+│  └─ Uses ipify.org, my-ip.io, ipapi.co (fallback chain for reliability)  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         TESTING SCENARIOS                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ✅ Scenario 1: On Office Network, Not Checked In                          │
+│  ├─ Given: User is on office network (IP in whitelist)                    │
+│  ├─ And: User has NOT checked in today                                     │
+│  ├─ When: User opens Dashboard                                              │
+│  └─ Then: Prompt appears "Auto Check-In Available"                         │
+│                                                                             │
+│  ✅ Scenario 2: Outside Office Network                                      │
+│  ├─ Given: User is outside office (IP NOT in whitelist)                   │
+│  ├─ When: User opens Dashboard                                              │
+│  └─ Then: No prompt appears, use face recognition instead                  │
+│                                                                             │
+│  ✅ Scenario 3: Already Checked In                                          │
+│  ├─ Given: User already checked in today                                   │
+│  ├─ When: User opens Dashboard (even on office network)                    │
+│  └─ Then: No prompt appears                                                 │
+│                                                                             │
+│  ✅ Scenario 4: User Dismisses Prompt                                       │
+│  ├─ Given: Prompt appeared                                                  │
+│  ├─ When: User clicks "Not Now"                                             │
+│  ├─ Then: Prompt hides                                                      │
+│  └─ And: Won't appear again until tomorrow                                 │
+│                                                                             │
+│  ✅ Scenario 5: User Confirms Auto Check-In                                 │
+│  ├─ Given: Prompt appeared                                                  │
+│  ├─ When: User clicks "Confirm Auto Check-In"                              │
+│  ├─ Then: Check-in saved with network metadata                             │
+│  └─ And: Success toast shows with IP address                               │
+│                                                                             │
+│  ✅ Scenario 6: Feature Disabled                                            │
+│  ├─ Given: settings/networkWhitelist has enabled=false                    │
+│  ├─ When: User opens Dashboard                                              │
+│  └─ Then: No prompt appears (feature disabled)                             │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```

@@ -1,0 +1,142 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if user is HR
+    function isHR() {
+      return request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'hr';
+    }
+
+    function isAdminOrHR() {
+      return isAdmin() || isHR();
+    }
+
+    function isKiosk() {
+      return request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'kiosk';
+    }
+    
+    // Users collection rules
+    match /users/{userId} {
+      // Users can read their own document
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Users can create their own document during registration
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Users can update their own document (including face descriptor)
+      allow update: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Admins can read all user documents
+      allow read: if isAdmin();
+
+      // Kiosk can read user profiles for face matching
+      allow read: if isKiosk();
+      
+      // Admins can update any user document (for management)
+      allow update: if isAdmin();
+      
+      // Admins can delete user documents
+      allow delete: if isAdmin();
+    }
+    
+    // Attendance collection rules
+    match /attendance/{docId} {
+      // Users can read their own attendance records
+      allow read: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      
+      // Users can create their own attendance records
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.keys().hasAll(['userId', 'date', 'checkIn', 'status']);
+      
+      // Users can update their own attendance records (for check-out)
+      allow update: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == request.auth.uid;
+      
+      // Admins can read all attendance records
+      allow read: if isAdmin();
+
+      // Kiosk can read attendance to prevent duplicates
+      allow read: if isKiosk();
+      
+      // Admins can write all attendance records (if needed for corrections)
+      allow write: if isAdmin();
+
+      // Kiosk can write attendance records
+      allow create: if isKiosk() && request.resource.data.mode == 'kiosk-auto';
+    }
+
+    // Attendance insights collection rules
+    match /attendanceInsights/{docId} {
+      // Admins can read all insights
+      allow read: if isAdmin();
+
+      // Only admins can write insights
+      allow write: if isAdmin();
+    }
+
+    // Presence metrics collection rules
+    match /presenceMetrics/{docId} {
+      // Admins and HR can read metrics
+      allow read: if isAdminOrHR();
+
+      // Admins and HR can write metrics
+      allow write: if isAdminOrHR();
+    }
+    
+    // Leaves collection rules
+    match /leaves/{leaveId} {
+      // Users can read their own leave requests
+      allow read: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      
+      // Users can create their own leave requests
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.keys().hasAll(['userId', 'userName', 'userEmail', 'startDate', 'endDate', 'reason', 'status']);
+      
+      // Users can update their own pending leave requests (to cancel)
+      allow update: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid &&
+        resource.data.status == 'pending';
+      
+      // Users can delete their own pending leave requests
+      allow delete: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid &&
+        resource.data.status == 'pending';
+      
+      // Admins can read all leave requests
+      allow read: if isAdmin();
+      
+      // Admins can update all leave requests (for approval/decline)
+      allow update: if isAdmin();
+      
+      // Admins can delete leave requests
+      allow delete: if isAdmin();
+    }
+    
+    // Settings collection rules (for network whitelist and other settings)
+    match /settings/{document} {
+      // All authenticated users can read settings
+      allow read: if isAuthenticated();
+      
+      // Only admins can write settings
+      allow write: if isAdmin();
+    }
+  }
+}

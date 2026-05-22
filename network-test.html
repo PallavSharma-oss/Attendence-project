@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Network Detection Test Tool</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      max-width: 700px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    
+    h1 {
+      color: #1a202c;
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+    
+    .subtitle {
+      color: #718096;
+      margin-bottom: 30px;
+    }
+    
+    .section {
+      background: #f7fafc;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 2px solid #e2e8f0;
+    }
+    
+    .section h2 {
+      color: #2d3748;
+      font-size: 18px;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .icon {
+      width: 24px;
+      height: 24px;
+    }
+    
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      width: 100%;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    button:disabled {
+      background: #cbd5e0;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .result {
+      background: white;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 15px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .success {
+      border-color: #48bb78;
+      background: #f0fff4;
+    }
+    
+    .error {
+      border-color: #f56565;
+      background: #fff5f5;
+    }
+    
+    .info {
+      border-color: #4299e1;
+      background: #ebf8ff;
+    }
+    
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+    
+    .status.success {
+      background: #48bb78;
+      color: white;
+    }
+    
+    .status.error {
+      background: #f56565;
+      color: white;
+    }
+    
+    .status.pending {
+      background: #ed8936;
+      color: white;
+    }
+    
+    label {
+      display: block;
+      color: #2d3748;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: 'Courier New', monospace;
+      margin-bottom: 15px;
+    }
+    
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+    
+    .example {
+      background: #edf2f7;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-top: 5px;
+      color: #4a5568;
+    }
+    
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-left: 10px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🌐 Network Detection Test Tool</h1>
+    <p class="subtitle">Test IP detection and CIDR validation for auto check-in feature</p>
+    
+    <!-- Test 1: Detect Current IP -->
+    <div class="section">
+      <h2>
+        <span>🔍</span>
+        Test 1: Detect Your Current IP
+      </h2>
+      <button onclick="testIPDetection()" id="detectBtn">
+        Detect My IP Address
+      </button>
+      <div id="ipResult" class="result" style="display: none;"></div>
+    </div>
+    
+    <!-- Test 2: Validate IP Against Whitelist -->
+    <div class="section">
+      <h2>
+        <span>✅</span>
+        Test 2: Validate IP Against Whitelist
+      </h2>
+      <label>Test IP Address:</label>
+      <input 
+        type="text" 
+        id="testIP" 
+        placeholder="e.g., 192.168.1.45"
+        value="192.168.1.45"
+      />
+      
+      <label>Allowed IP Ranges (one per line):</label>
+      <textarea 
+        id="allowedRanges" 
+        placeholder="Enter IP addresses or CIDR ranges..."
+      >192.168.1.0/24
+10.0.0.0/16
+203.0.113.45</textarea>
+      <div class="example">
+        Examples: 192.168.1.0/24 (CIDR range) or 203.0.113.45 (exact IP)
+      </div>
+      
+      <button onclick="testValidation()" id="validateBtn">
+        Test Validation
+      </button>
+      <div id="validationResult" class="result" style="display: none;"></div>
+    </div>
+    
+    <!-- Test 3: Full Office Network Check -->
+    <div class="section">
+      <h2>
+        <span>🏢</span>
+        Test 3: Simulate Office Network Check
+      </h2>
+      <p style="color: #718096; margin-bottom: 15px; font-size: 14px;">
+        This simulates the full flow: detect IP → validate against whitelist
+      </p>
+      <button onclick="testOfficeNetwork()" id="officeBtn">
+        Run Full Network Check
+      </button>
+      <div id="officeResult" class="result" style="display: none;"></div>
+    </div>
+    
+    <!-- Instructions -->
+    <div class="section info">
+      <h2>
+        <span>ℹ️</span>
+        How to Use
+      </h2>
+      <ol style="margin-left: 20px; color: #2d3748; line-height: 1.8;">
+        <li><strong>Test 1:</strong> Click to detect your current public IP address</li>
+        <li><strong>Test 2:</strong> Enter an IP and whitelist to test CIDR matching logic</li>
+        <li><strong>Test 3:</strong> Run the full validation flow (what happens on Dashboard)</li>
+      </ol>
+    </div>
+  </div>
+
+  <script>
+    // IP Detection (same logic as networkDetection.js)
+    async function getClientIP() {
+      const services = [
+        'https://api.ipify.org?format=json',
+        'https://api.my-ip.io/v1/ip.json',
+        'https://ipapi.co/json/'
+      ];
+
+      for (const serviceUrl of services) {
+        try {
+          const response = await fetch(serviceUrl);
+          const data = await response.json();
+          const ip = data.ip || data.IPv4 || (data.ip ? data.ip.split(',')[0].trim() : null);
+          
+          if (ip) {
+            console.log(`✅ Got IP from ${serviceUrl}: ${ip}`);
+            return ip;
+          }
+        } catch (error) {
+          console.warn(`⚠️ Failed to fetch from ${serviceUrl}:`, error);
+        }
+      }
+
+      throw new Error('Failed to detect IP from all services');
+    }
+
+    // CIDR Validation (same logic as networkDetection.js)
+    function isIPInRange(ipAddress, allowedRanges) {
+      for (const range of allowedRanges) {
+        if (range.includes('/')) {
+          // CIDR notation
+          const [network, prefixLength] = range.split('/');
+          const networkParts = network.split('.').map(Number);
+          const ipParts = ipAddress.split('.').map(Number);
+          const prefix = parseInt(prefixLength, 10);
+
+          // Convert to binary and apply subnet mask
+          const networkBinary = networkParts.reduce((acc, part) => (acc << 8) | part, 0);
+          const ipBinary = ipParts.reduce((acc, part) => (acc << 8) | part, 0);
+          const mask = (-1 << (32 - prefix)) >>> 0;
+
+          if ((networkBinary & mask) === (ipBinary & mask)) {
+            return true;
+          }
+        } else {
+          // Exact IP match
+          if (ipAddress === range.trim()) {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    }
+
+    // Test Functions
+    async function testIPDetection() {
+      const btn = document.getElementById('detectBtn');
+      const result = document.getElementById('ipResult');
+      
+      btn.disabled = true;
+      btn.innerHTML = 'Detecting IP... <span class="spinner"></span>';
+      result.style.display = 'block';
+      result.className = 'result info';
+      result.innerHTML = 'Fetching IP from multiple services...';
+
+      try {
+        const ip = await getClientIP();
+        result.className = 'result success';
+        result.innerHTML = `
+          <strong>✅ IP Detected Successfully!</strong><br><br>
+          Your public IP address: <strong>${ip}</strong><br><br>
+          <em>This is the IP that will be validated against your Firestore whitelist.</em>
+        `;
+      } catch (error) {
+        result.className = 'result error';
+        result.innerHTML = `
+          <strong>❌ Failed to Detect IP</strong><br><br>
+          Error: ${error.message}<br><br>
+          <em>Check your internet connection or if API services are blocked by firewall.</em>
+        `;
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = 'Detect My IP Address';
+    }
+
+    function testValidation() {
+      const btn = document.getElementById('validateBtn');
+      const result = document.getElementById('validationResult');
+      const testIP = document.getElementById('testIP').value.trim();
+      const allowedRangesText = document.getElementById('allowedRanges').value.trim();
+
+      if (!testIP) {
+        alert('Please enter a test IP address');
+        return;
+      }
+
+      if (!allowedRangesText) {
+        alert('Please enter at least one allowed IP range');
+        return;
+      }
+
+      const allowedRanges = allowedRangesText.split('\n').map(r => r.trim()).filter(r => r);
+
+      btn.disabled = true;
+      btn.innerHTML = 'Validating... <span class="spinner"></span>';
+      result.style.display = 'block';
+
+      // Simulate delay
+      setTimeout(() => {
+        const isAllowed = isIPInRange(testIP, allowedRanges);
+
+        result.className = `result ${isAllowed ? 'success' : 'error'}`;
+        result.innerHTML = `
+          <strong>${isAllowed ? '✅' : '❌'} Validation Result</strong><br><br>
+          Test IP: <strong>${testIP}</strong><br>
+          Status: <strong>${isAllowed ? 'ALLOWED' : 'DENIED'}</strong><br><br>
+          <strong>Whitelist:</strong><br>
+          ${allowedRanges.map(r => `• ${r}`).join('<br>')}<br><br>
+          <em>${isAllowed 
+            ? 'This IP would trigger auto check-in prompt ✅' 
+            : 'This IP would NOT trigger auto check-in prompt ❌'
+          }</em>
+        `;
+
+        btn.disabled = false;
+        btn.innerHTML = 'Test Validation';
+      }, 500);
+    }
+
+    async function testOfficeNetwork() {
+      const btn = document.getElementById('officeBtn');
+      const result = document.getElementById('officeResult');
+      const allowedRangesText = document.getElementById('allowedRanges').value.trim();
+
+      if (!allowedRangesText) {
+        alert('Please configure allowed IP ranges in Test 2 first');
+        return;
+      }
+
+      const allowedRanges = allowedRangesText.split('\n').map(r => r.trim()).filter(r => r);
+
+      btn.disabled = true;
+      btn.innerHTML = 'Running Full Check... <span class="spinner"></span>';
+      result.style.display = 'block';
+      result.className = 'result info';
+      result.innerHTML = `
+        <strong>📡 Running Full Network Check...</strong><br><br>
+        Step 1: Detecting your public IP...<br>
+      `;
+
+      try {
+        // Step 1: Detect IP
+        const ipAddress = await getClientIP();
+        result.innerHTML += `✅ IP detected: <strong>${ipAddress}</strong><br><br>`;
+        result.innerHTML += `Step 2: Validating against whitelist...<br>`;
+
+        // Simulate delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Step 2: Validate
+        const isOfficeNetwork = isIPInRange(ipAddress, allowedRanges);
+
+        result.className = `result ${isOfficeNetwork ? 'success' : 'error'}`;
+        result.innerHTML += `${isOfficeNetwork ? '✅' : '❌'} Validation ${isOfficeNetwork ? 'PASSED' : 'FAILED'}<br><br>`;
+        result.innerHTML += '<hr style="margin: 15px 0; border: 1px solid #e2e8f0;"><br>';
+        result.innerHTML += `<strong>Final Result:</strong><br><br>`;
+        result.innerHTML += `Detected IP: <strong>${ipAddress}</strong><br>`;
+        result.innerHTML += `Office Network: <strong>${isOfficeNetwork ? 'YES ✅' : 'NO ❌'}</strong><br><br>`;
+
+        if (isOfficeNetwork) {
+          result.innerHTML += `
+            <div style="background: #c6f6d5; padding: 12px; border-radius: 6px; border: 2px solid #48bb78;">
+              <strong>✅ Auto Check-In Would Be Available!</strong><br><br>
+              <em>In the actual app, the prompt would now appear:<br>
+              "Office Network Detected - Auto check-in available"</em>
+            </div>
+          `;
+        } else {
+          result.innerHTML += `
+            <div style="background: #fed7d7; padding: 12px; border-radius: 6px; border: 2px solid #f56565;">
+              <strong>❌ Auto Check-In Not Available</strong><br><br>
+              <em>Your IP (${ipAddress}) is not in the whitelist.<br>
+              User would need to use face recognition check-in.</em>
+            </div>
+          `;
+        }
+
+      } catch (error) {
+        result.className = 'result error';
+        result.innerHTML = `
+          <strong>❌ Network Check Failed</strong><br><br>
+          Error: ${error.message}<br><br>
+          <em>This would prevent auto check-in prompt from appearing.</em>
+        `;
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = 'Run Full Network Check';
+    }
+
+    // Auto-run IP detection on page load
+    window.addEventListener('load', () => {
+      testIPDetection();
+    });
+  </script>
+</body>
+</html>

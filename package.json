@@ -1,0 +1,38 @@
+{
+  "name": "attendance-management-system",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "license": "UNLICENSED",
+  "copyright": "Copyright (c) 2026. All rights reserved.",
+  "author": "Your Name/Company",
+  "licensingInfo": "PROPRIETARY - Paid license required. See PAYMENT_TERMS.md and LICENSE for details.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@headlessui/react": "^2.2.9",
+    "@heroicons/react": "^2.2.0",
+    "axios": "^1.6.2",
+    "face-api.js": "^0.22.2",
+    "html-to-image": "^1.11.13",
+    "html2canvas": "^1.4.1",
+    "qr-scanner": "^1.4.2",
+    "qrcode.react": "^4.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.22.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.0",
+    "@types/react": "^18.2.55",
+    "@types/react-dom": "^18.2.19",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.24",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.2.0",
+    "vite": "^5.1.0"
+  }
+}
