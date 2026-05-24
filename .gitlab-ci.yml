@@ -10,7 +10,7 @@ deploy_frontend:
     - git pull origin main
     - npm install
     - npm run build
-    - pm2 restart attendance-frontend
+    - pm2 restart all
   only:
     - main
 
@@ -22,6 +22,6 @@ deploy_backend:
     - cd /home/ubuntu/Attendence-project/backend
     - git pull origin main
     - npm install
-    - pm2 restart attendance-backend
+    - pm2 restart all
   only:
     - main
