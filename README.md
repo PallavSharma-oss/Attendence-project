@@ -47,3 +47,4 @@ To also remove DB volume data:
 ```bash
 docker compose down -v
 ```
+test
